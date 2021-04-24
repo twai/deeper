@@ -1,3 +1,5 @@
+const TIME_SCALE = 10;
+
 var config = {
     type: Phaser.AUTO,
     width: 800,
@@ -6,7 +8,7 @@ var config = {
     physics: {
         default: 'arcade',
         arcade: {
-            gravity: { y: 400 }
+            gravity: { y: 400 / TIME_SCALE }
         }
     },
     scene: {
@@ -52,7 +54,7 @@ function create() {
 
     // Create player
     this.player = this.physics.add.sprite(200, 0, 'player', 0);
-    this.player.body.setMaxSpeed(800);
+    this.player.body.setMaxSpeed(800 / TIME_SCALE);
     this.player.setCollideWorldBounds(true);
     player = this.player; // Expose globally
 
@@ -113,21 +115,21 @@ function update(time, delta) {
     this.player.setAngle(0);
 
     if(c.left.isDown) {
-        this.player.body.setVelocityX(-200);
+        this.player.body.setVelocityX(-200 / TIME_SCALE);
         if(!blocked)
             this.player.setAngle(-15);
     }
     else if(c.right.isDown) {
-        this.player.body.setVelocityX(200);
+        this.player.body.setVelocityX(200 / TIME_SCALE);
         if(!blocked)
         this.player.setAngle(15);
     }
 
     // Bullet time test
     if(c.space.isDown) {
-        setTimeScale(this, 10);
+        setTimeScale(this, 10 / TIME_SCALE);
     }
     else {
-        setTimeScale(this, 1);
+        setTimeScale(this, 1 / TIME_SCALE);
     }
 }
