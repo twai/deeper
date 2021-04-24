@@ -57,6 +57,19 @@ function create() {
     this.player.body.setMaxSpeed(800 / TIME_SCALE);
     this.player.setCollideWorldBounds(true);
     player = this.player; // Expose globally
+    this.player.moveLeft = function() {
+        var blocked = player.body.blocked.down;
+        this.body.setVelocityX(-200 / TIME_SCALE);
+        if(!blocked)
+            this.setAngle(-15);
+    }
+
+    player.moveRight = function() {
+        var blocked = player.body.blocked.down;
+        this.body.setVelocityX(200 / TIME_SCALE);
+        if(!blocked)
+        this.setAngle(15);
+    }
 
     // Create floor
     this.objects.floor = this.add.rectangle(400, WORLD_HEIGHT - 50, 700, 100, 0x000000);
@@ -95,6 +108,17 @@ function create() {
     this.cameras.main.startFollow(this.player);
     this.cameras.main.followOffset.set(0, -200);
 
+
+    // this.input.on('pointerdown', function(pointer) {
+    //     console.log(pointer.x, pointer.y);
+    //     if(pointer.x < 400) { 
+    //         player.moveLeft();
+    //     }
+    //     else {
+    //         player.moveRight();
+    //     }
+    // });
+
     console.log('Done creating!');
 }
 
@@ -115,14 +139,20 @@ function update(time, delta) {
     this.player.setAngle(0);
 
     if(c.left.isDown) {
-        this.player.body.setVelocityX(-200 / TIME_SCALE);
-        if(!blocked)
-            this.player.setAngle(-15);
+        this.player.moveLeft();
     }
     else if(c.right.isDown) {
-        this.player.body.setVelocityX(200 / TIME_SCALE);
-        if(!blocked)
-        this.player.setAngle(15);
+        this.player.moveRight();
+    }
+
+    var pointer = this.input.activePointer;
+    if(pointer.isDown) {
+        if(pointer.x < this.player.body.x) {
+            this.player.moveLeft();
+        }
+        else {
+            this.player.moveRight();
+        }
     }
 
     // Bullet time test
