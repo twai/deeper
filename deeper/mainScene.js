@@ -5,38 +5,42 @@ class MainScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.image('player', 'img/player_32.png');
-        this.load.image('obstacle_particle', 'img/particle.png')
+        this.load.image('main/player', 'img/player_32.png');
+        this.load.image('main/obstacle_particle', 'img/particle.png')
     }
 
     create() {
         // Set bounds for world and camera
-        this.physics.world.setBounds(0, 0, 800, WORLD_HEIGHT);
+        this.physics.world.setBounds(100, 0, 800, WORLD_HEIGHT);
         this.cameras.main.setBounds(0,0,800, WORLD_HEIGHT);
-
+        this.currentTimescale = 1;
         this.mainCamera = this.cameras.main;
+        this.metersFallen = 0;
+        this.lastEmittedScore = 0;
+        this.lives = 3;
+        this.canUpdateScore = true;
     
         // Create input
         this.cursor = this.input.keyboard.createCursorKeys();
         this.cursor.space = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     
         // Create player
-        this.player = this.physics.add.sprite(200, 0, 'player', 0);
-        this.player.body.setMaxVelocityY(800 / TIME_SCALE);
+        this.player = this.physics.add.sprite(500, 0, 'main/player', 0);
+        this.player.body.setMaxVelocityY(TS(800));
         this.player.setCollideWorldBounds(true);
         this.player.canShake = true;
 
         // player = this.player; // Expose globally
-        this.player.moveLeft = function() {
+        this.player.moveLeft = function(dt) {
             var blocked = this.body.blocked.down;
-            this.body.setVelocityX(-800 / TIME_SCALE);
+            this.body.setVelocityX(TS(-80) * dt);
             if(!blocked)
                 this.setAngle(-15);
         }
     
-        this.player.moveRight = function() {
+        this.player.moveRight = function(dt) {
             var blocked = this.body.blocked.down;
-            this.body.setVelocityX(800 / TIME_SCALE);
+            this.body.setVelocityX(TS(80) * dt);
             
             if(!blocked)
             this.setAngle(15);
@@ -55,7 +59,7 @@ class MainScene extends Phaser.Scene {
         this.generateObstacles(this, WORLD_HEIGHT);
         
         // Setup particles for destroyed obstacles
-        this.particles = this.add.particles('obstacle_particle');
+        this.particles = this.add.particles('main/obstacle_particle');
         this.particles.createEmitter({
             angle: { min: 240, max: 300 },
             speed: { min: 100, max: 200 },
@@ -68,7 +72,7 @@ class MainScene extends Phaser.Scene {
             on: false
         });
 
-        this.lineParticles = this.add.particles('obstacle_particle');
+        this.lineParticles = this.add.particles('main/obstacle_particle');
         
         var theLine = new Phaser.Geom.Line(0, 0, 200, 0);
         this.lineParticles.createEmitter({
@@ -100,7 +104,7 @@ class MainScene extends Phaser.Scene {
         console.log('Done creating!');
     }
 
-    update(time, delta) {
+    update(time, dt) {
         var c = this.cursor;
         var blocked = this.player.body.blocked.down;
         this.player.canShake = !blocked;
@@ -108,30 +112,39 @@ class MainScene extends Phaser.Scene {
         // Reset before calculating new status
         this.player.body.setVelocityX(0);
         this.player.setAngle(0);
-    
+        
+        // Bullet time test
+        if(c.space.isDown) {
+            this.setTimeScale(this, TS(10));
+        }
+        else {
+            this.setTimeScale(this, TS(1));
+        }
+        
+        var dtUnScaled = dt * this.currentTimescale;
         if(c.left.isDown) {
-            this.player.moveLeft();
+            this.player.moveLeft(dtUnScaled);
         }
         else if(c.right.isDown) {
-            this.player.moveRight();
+            this.player.moveRight(dtUnScaled);
         }
     
         var pointer = this.input.activePointer;
         if(pointer.isDown) {
             if(pointer.x < this.player.body.x) {
-                this.player.moveLeft();
+                this.player.moveLeft(dtUnScaled);
             }
             else {
-                this.player.moveRight();
+                this.player.moveRight(dtUnScaled);
             }
         }
-    
-        // Bullet time test
-        if(c.space.isDown) {
-            this.setTimeScale(this, 10 / TIME_SCALE);
-        }
-        else {
-            this.setTimeScale(this, 1 / TIME_SCALE);
+
+        
+        this.metersFallen = this.player.body.y / 100;
+        if(this.metersFallen - this.lastEmittedScore > 1 && this.canUpdateScore) {
+            var newScore = Math.floor(this.metersFallen);
+            this.events.emit('scoreChanged', newScore);
+            this.lastEmittedScore = newScore;
         }
     }
 
@@ -145,10 +158,29 @@ class MainScene extends Phaser.Scene {
             this.particles.emitParticleAt(this.player.body.position.x, this.player.body.position.y);
             this.lineParticles.emitParticleAt(floor.body.x, floor.body.y);
             floor.destroy();
+            this.loseLife();
+        }
+    }
+
+    loseLife() {
+        this.lives -= 1;
+        this.events.emit('livesChanged', this.lives);
+
+        if(this.lives == 0) {
+            this.canUpdateScore = false;
+            this.cameras.main.fade(2000);
+            this.time.delayedCall(400, () => {
+                //this.events.emit('gameOver');
+               // var guiScene = this.scene.get('GUIScene');
+               // guiScene.scene.restart();
+                this.scene.restart();
+            });
+
         }
     }
 
     setTimeScale(ctx, scale) {
+        ctx.currentTimescale = scale * TIME_SCALE;
         ctx.tweens.timeScale = scale;
         ctx.physics.world.timeScale = scale;
         ctx.time.timeScale = scale;
