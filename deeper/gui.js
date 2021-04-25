@@ -24,7 +24,7 @@ class GUIScene extends Phaser.Scene {
 
         // Score
         var tl = this.rightBG.getTopLeft();
-        var textStyle = {font: "48px Arial", fill: "#ffffff"};
+        var textStyle = {font: "48px Courier", fill: "#ffffff"};
         this.score = [];
         for(var i = 0; i < 4; i++) {
             this.score.push(this.add.text(tl.x + 10, tl.y + 25 + i * 48, "0", textStyle));
