@@ -273,7 +273,7 @@ class MainScene extends Phaser.Scene {
             var rnd = Phaser.Math.RND.realInRange(0, 100);
             if (rnd < difficulty) {
                 var x = Phaser.Math.RND.integerInRange(50, 750);
-                var obstacle = scene.add.rectangle(x, y, 200, 50, 0x000000);
+                var obstacle = scene.add.rectangle(100 + x, y, 200, 50, 0x000000);
                 scene.objects.obstacles.push(obstacle);
                 scene.physics.add.existing(obstacle);
                 obstacle.body.allowGravity = false;
