@@ -9,18 +9,30 @@
                 margin: 0px;
             }
         </style>
-
-        <script src="phaser.js"></script>
-        <script src="phaser-arcade-physics.min.js"></script>
-        <script src="constants.js"></script>
-        <script src="gui.js"></script>
-        <script src="mainScene.js"></script>
-        <script src="game.js"></script>
     </head>
 
     <body>
-        <div id="game">
-          
+        <div style='text-align: center;'>
+            <h1 style="font-family:'Courier New', Courier, monospace; color:lightgray;">Free Fall</h1>
+           <p style="font-family:'Courier New', Courier, monospace; color:lightgray;"> 
+            A game by Mattias Willemsen, made for Ludum Dare 48
+            </p>
+        </div>
+
+        <div id="game" style='margin:50px;display:flex;align-items:center;justify-content:center;'>
+          <iframe src='./game.html' width='1000px', height='610px', style='border:none;'>
+          </iframe>
+        </div>
+        <div style='text-align: center;'>
+            <h2 style="font-family:'Courier New', Courier, monospace; color:lightgray;">&nbsp;Controls</h2>
+           <p style="font-family:'Courier New', Courier, monospace; color:lightgray;"> 
+            <b>&nbsp;&nbsp;&nbsp;LEFT:</b> Move left <br/> 
+            <b>&nbsp;&nbsp;&nbsp;RIGHT:</b> Move right <br /> 
+            <b>UP/SPACE:</b> Slow time&nbsp;<br /> 
+            <b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;M: </b> Mute &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br />
+            <br />
+            You can also click and hold to move, but it's a bit unstable :)
+            </p>
         </div>
     </body>
 </html>
