@@ -6,7 +6,11 @@ class MainScene extends Phaser.Scene {
 
     preload() {
         this.load.image('main/player', 'img/player_32.png');
-        this.load.image('main/obstacle_particle', 'img/particle.png')
+        this.load.image('main/obstacle_particle', 'img/particle.png');
+
+        this.load.audio('main/explosion', 'sound/explosion5.wav');
+        this.load.audio('main/explosion_long', 'sound/explosion5_long.wav');
+        this.load.audio('main/bgm', 'sound/deeper.wav')
     }
 
     create() {
@@ -24,6 +28,13 @@ class MainScene extends Phaser.Scene {
         this.cursor = this.input.keyboard.createCursorKeys();
         this.cursor.space = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     
+        // Create sound
+        this.explosionSound = this.sound.add('main/explosion');
+        this.explosionLongSound = this.sound.add('main/explosion_long');
+        this.bgm = this.sound.add('main/bgm', {
+            loop: true
+        });
+
         // Create player
         this.player = this.physics.add.sprite(500, 0, 'main/player', 0);
         this.player.body.setMaxVelocityY(TS(800));
@@ -31,18 +42,18 @@ class MainScene extends Phaser.Scene {
         this.player.canShake = true;
 
         // player = this.player; // Expose globally
-        this.player.moveLeft = function(dt) {
+        this.player.moveLeft = function(dt, allowTilt = true) {
             var blocked = this.body.blocked.down;
             this.body.setVelocityX(TS(-80) * dt);
-            if(!blocked)
+            if(!blocked && allowTilt)
                 this.setAngle(-15);
         }
     
-        this.player.moveRight = function(dt) {
+        this.player.moveRight = function(dt, allowTilt = true) {
             var blocked = this.body.blocked.down;
             this.body.setVelocityX(TS(80) * dt);
             
-            if(!blocked)
+            if(!blocked && allowTilt)
             this.setAngle(15);
         }
     
@@ -59,21 +70,20 @@ class MainScene extends Phaser.Scene {
         this.generateObstacles(this, WORLD_HEIGHT);
         
         // Setup particles for destroyed obstacles
-        this.particles = this.add.particles('main/obstacle_particle');
+        this.particles = this.add.particles('main/player');
         this.particles.createEmitter({
             angle: { min: 240, max: 300 },
             speed: { min: 100, max: 200 },
             quantity: { min: 5, max: 15 },
-            lifespan: 4000,
+            lifespan: 1000,
             alpha: { start: 1, end: 0 },
-            scale: { min: 0.1, max: 1},
+            scale: { min: 0.1, max: 0.5},
             rotate: {start: 0, end: 360, ease: 'Back.easeOut'},
             gravityY: 800,
             on: false
         });
 
         this.lineParticles = this.add.particles('main/obstacle_particle');
-        
         var theLine = new Phaser.Geom.Line(0, 0, 200, 0);
         this.lineParticles.createEmitter({
             angle: { min: 90, max: 90 },
@@ -84,8 +94,32 @@ class MainScene extends Phaser.Scene {
             quantity: 20,
             rotate: {start: 0, end: 0},
             emitZone: {type: 'edge', source: theLine, quantity: 20},
+            gravityY: 800,
             on: false
         });
+
+        this.deathParticles = this.add.particles('main/player');
+        this.deathParticles.createEmitter({
+            angle: { min: -5, max: 5 },
+            speed: { min: 100, max: 1500 },
+            quantity: { min: 50, max: 100 },
+            lifespan: 2000,
+            alpha: { start: 1, end: 0.5 },
+            scale: { min: 0.1, max: 0.5},
+            rotation: {min: 0, max: 360},
+            on: false
+        });
+        this.deathParticles.createEmitter({
+            angle: { min: 175, max: 185 },
+            speed: { min: 100, max: 1500 },
+            quantity: { min: 50, max: 100 },
+            lifespan: 2000,
+            alpha: { start: 1, end: 0.5 },
+            scale: { min: 0.1, max: 0.5},
+            rotation: {min: 0, max: 360},
+            on: false
+        });
+
 
         // Add collision between player and floor
         this.physics.add.collider(this.player, this.objects.floor,
@@ -101,18 +135,12 @@ class MainScene extends Phaser.Scene {
         this.cameras.main.startFollow(this.player);
         this.cameras.main.followOffset.set(0, -200);
         
+        this.bgm.play();
         console.log('Done creating!');
     }
 
-    update(time, dt) {
+    handleInput(dt) {
         var c = this.cursor;
-        var blocked = this.player.body.blocked.down;
-        this.player.canShake = !blocked;
-    
-        // Reset before calculating new status
-        this.player.body.setVelocityX(0);
-        this.player.setAngle(0);
-        
         // Bullet time test
         if(c.space.isDown) {
             this.setTimeScale(this, TS(10));
@@ -131,14 +159,28 @@ class MainScene extends Phaser.Scene {
     
         var pointer = this.input.activePointer;
         if(pointer.isDown) {
-            if(pointer.x < this.player.body.x) {
-                this.player.moveLeft(dtUnScaled);
-            }
-            else {
-                this.player.moveRight(dtUnScaled);
+            var diff = Math.abs(pointer.x - (this.player.x));
+            if(diff > 5) {
+                if(pointer.x < this.player.x) {
+                    this.player.moveLeft(dtUnScaled, diff > 5);
+                }
+                else {
+                    this.player.moveRight(dtUnScaled, diff > 5);
+                }
             }
         }
+    }
 
+    update(time, dt) {
+        var blocked = this.player.body.blocked.down;
+        this.player.canShake = !blocked;
+    
+        // Reset before calculating new status
+        this.player.body.setVelocityX(0);
+        this.player.setAngle(0);
+        
+        if(this.lives > 0)
+            this.handleInput(dt);
         
         this.metersFallen = this.player.body.y / 100;
         if(this.metersFallen - this.lastEmittedScore > 1 && this.canUpdateScore) {
@@ -148,17 +190,55 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    lerp(start, end, time, callback) {
+        var cb = function() {
+            var p = timer.getOverallProgress();
+            // console.log("Overall progress: ", p);
+            var v = (1 - p) * start + p * end;
+            callback(v);
+        }
+        var delay = 1;
+        var repeat = time / delay;
+        console.log("Repeating " + repeat + " times with delay " + delay);
+        var timer = this.time.addEvent({
+            delay: delay,
+            callback: cb,
+            callbackScope: this,
+            repeat: repeat
+        });
+    }
+
     playerImpact(player, floor) {
         //console.log("Impact!");
         //console.log(player.body.blocked, this.canShake);
         if(player.body.blocked.down && player.canShake) {
             this.cameras.main.shake(250, 0.025);
             this.player.canShake = false;
-            var x = this.player.body.position.x;
-            this.particles.emitParticleAt(this.player.body.position.x, this.player.body.position.y);
-            this.lineParticles.emitParticleAt(floor.body.x, floor.body.y);
-            floor.destroy();
             this.loseLife();
+            
+            // this.cameras.main.setLerp(0.1, 0.1);
+            
+            // Camera "impact" only in real time
+            if(this.currentTimescale == 1) {
+                this.lerp(-200, -300, TS(100), (t) => this.cameras.main.followOffset.set(0, t));
+                this.time.delayedCall(TS(100), () => {
+                    this.lerp(-300, -200, TS(500), (t) => this.cameras.main.followOffset.set(0, t));
+                });
+            }
+
+
+            if(this.lives > 0) {
+                this.explosionSound.play();
+                this.particles.emitParticleAt(this.player.x, this.player.y);
+                this.lineParticles.emitParticleAt(floor.body.x, floor.body.y);
+                floor.destroy();
+            }
+            else {
+                this.explosionLongSound.play();
+                this.player.visible = false;
+                this.setTimeScale(this, TS(1));
+                this.deathParticles.emitParticleAt(this.player.x, this.player.y);
+            }
         }
     }
 
@@ -169,11 +249,12 @@ class MainScene extends Phaser.Scene {
         if(this.lives == 0) {
             this.canUpdateScore = false;
             this.cameras.main.fade(2000);
+            this.bgm.destroy();
             this.time.delayedCall(400, () => {
-                //this.events.emit('gameOver');
                // var guiScene = this.scene.get('GUIScene');
                // guiScene.scene.restart();
                 this.scene.restart();
+                this.events.emit('gameOver');
             });
 
         }
