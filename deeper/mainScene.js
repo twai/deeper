@@ -6,11 +6,14 @@ class MainScene extends Phaser.Scene {
 
     preload() {
         this.load.image('main/player', 'img/player_32.png');
+        this.load.image('main/player_white', 'img/player_white_32.png');
         this.load.image('main/obstacle_particle', 'img/particle.png');
 
         this.load.audio('main/explosion', 'sound/explosion5.wav');
         this.load.audio('main/explosion_long', 'sound/explosion5_long.wav');
         this.load.audio('main/bgm', 'sound/deeper.wav')
+
+        console.log("Preloaded!");
     }
 
     create() {
@@ -23,6 +26,8 @@ class MainScene extends Phaser.Scene {
         this.lastEmittedScore = 0;
         this.lives = 3;
         this.canUpdateScore = true;
+        this.bulletTime = 100;
+        this.bulletTimeCooldown = false;
     
         // Create input
         this.cursor = this.input.keyboard.createCursorKeys();
@@ -34,12 +39,23 @@ class MainScene extends Phaser.Scene {
         this.bgm = this.sound.add('main/bgm', {
             loop: true
         });
-
         // Create player
-        this.player = this.physics.add.sprite(500, 0, 'main/player', 0);
+        this.player = this.physics.add.sprite(500, 0, 'main/player_white', 0);
+        var tint = Phaser.Display.Color.GetColor(237, 28, 28);
+        this.player.setTint(tint);
         this.player.body.setMaxVelocityY(TS(800));
         this.player.setCollideWorldBounds(true);
         this.player.canShake = true;
+
+        this.player.setSaturation = function(percentage) {
+            const full = {r: 237, g: 28, b: 28};
+            const empty = {r: 225, g: 225, b: 225};
+            var r = full.r * percentage + empty.r * (1 - percentage);
+            var g = full.g * percentage + empty.g * (1 - percentage);
+            var b = full.b * percentage + empty.b * (1 - percentage);
+            var tint = Phaser.Display.Color.GetColor(r, g, b);
+            this.setTint(tint);
+        }
 
         // player = this.player; // Expose globally
         this.player.moveLeft = function(dt, allowTilt = true) {
@@ -62,7 +78,7 @@ class MainScene extends Phaser.Scene {
         this.physics.add.existing(this.objects.floor);
         this.objects.floor.body.allowGravity = false;
         this.objects.floor.body.setImmovable(true);
-
+        
         // Create obstacles
         this.objects.obstacles  = []
         // TODO: Better generation
@@ -135,18 +151,40 @@ class MainScene extends Phaser.Scene {
         this.cameras.main.startFollow(this.player);
         this.cameras.main.followOffset.set(0, -200);
         
+        // Set up mute hotkey
+        this.input.keyboard.on('keyup-M', (event) => {
+            this.sound.setMute(!this.sound.mute);
+        });
+
         this.bgm.play();
         console.log('Done creating!');
+    }
+
+    properRestart() {
+        this.sound.removeAll();
+        this.scene.restart();
     }
 
     handleInput(dt) {
         var c = this.cursor;
         // Bullet time test
-        if(c.space.isDown) {
+        if(c.space.isDown && !this.bulletTimeCooldown) {
+            this.bulletTime -= dt * 0.05;
             this.setTimeScale(this, TS(10));
         }
         else {
+            this.bulletTime += dt * 0.01;
             this.setTimeScale(this, TS(1));
+        }
+        this.bulletTime = Phaser.Math.Clamp(this.bulletTime, 0, 100);
+        console.log()
+        this.player.setSaturation(this.bulletTime / 100);
+
+        if(this.bulletTime == 0) {
+            this.bulletTimeCooldown = true;
+        }
+        else if(this.bulletTimeCooldown && this.bulletTime > 10) {
+            this.bulletTimeCooldown = false;
         }
         
         var dtUnScaled = dt * this.currentTimescale;
@@ -161,6 +199,7 @@ class MainScene extends Phaser.Scene {
         if(pointer.isDown) {
             var diff = Math.abs(pointer.x - (this.player.x));
             if(diff > 5) {
+                console.log(pointer.x + " vs " + this.player.x);
                 if(pointer.x < this.player.x) {
                     this.player.moveLeft(dtUnScaled, diff > 5);
                 }
@@ -199,7 +238,7 @@ class MainScene extends Phaser.Scene {
         }
         var delay = 1;
         var repeat = time / delay;
-        console.log("Repeating " + repeat + " times with delay " + delay);
+        // console.log("Repeating " + repeat + " times with delay " + delay);
         var timer = this.time.addEvent({
             delay: delay,
             callback: cb,
@@ -221,19 +260,22 @@ class MainScene extends Phaser.Scene {
             // Camera "impact" only in real time
             if(this.currentTimescale == 1) {
                 this.lerp(-200, -300, TS(100), (t) => this.cameras.main.followOffset.set(0, t));
-                this.time.delayedCall(TS(100), () => {
-                    this.lerp(-300, -200, TS(500), (t) => this.cameras.main.followOffset.set(0, t));
-                });
             }
 
 
             if(this.lives > 0) {
+                this.time.delayedCall(TS(100), () => {
+                    this.lerp(-300, -200, TS(500), (t) => this.cameras.main.followOffset.set(0, t));
+                });
                 this.explosionSound.play();
                 this.particles.emitParticleAt(this.player.x, this.player.y);
                 this.lineParticles.emitParticleAt(floor.body.x, floor.body.y);
                 floor.destroy();
             }
             else {
+                this.time.delayedCall(TS(100), () => {
+                    this.lerp(-300, 0, TS(2000), (t) => this.cameras.main.followOffset.set(0, t));
+                });
                 this.explosionLongSound.play();
                 this.player.visible = false;
                 this.setTimeScale(this, TS(1));
@@ -251,9 +293,8 @@ class MainScene extends Phaser.Scene {
             this.cameras.main.fade(2000);
             this.bgm.destroy();
             this.time.delayedCall(400, () => {
-               // var guiScene = this.scene.get('GUIScene');
-               // guiScene.scene.restart();
-                this.scene.restart();
+                this.properRestart();
+                // this.scene.restart();
                 this.events.emit('gameOver');
             });
 
@@ -269,7 +310,7 @@ class MainScene extends Phaser.Scene {
 
     generateObstacles(scene, depth) {
         for(var y = 0; y < depth; y += 50) {
-            var difficulty = (y / depth) * 100;
+            var difficulty = (y / depth) * 200;
             var rnd = Phaser.Math.RND.realInRange(0, 100);
             if (rnd < difficulty) {
                 var x = Phaser.Math.RND.integerInRange(50, 750);
