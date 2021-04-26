@@ -8,24 +8,52 @@
                 padding: 0px;
                 margin: 0px;
             }
+            div {
+                text-align: center;
+            }
+            div.game {
+                margin:50px;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+            }
+            h1, h2 {
+                font-family:'Courier New', Courier, monospace; 
+                color:lightgray;
+            }
+            p {
+                font-family:'Courier New', Courier, monospace; color:lightgray;
+            }
+            a:link {
+                color:lightgray;
+            }
+            a:visited {
+                color:gray;
+            }
+            a:hover {
+                color:white;
+            }
+            a:active {
+                color:#4f4c4c;
+            }
         </style>
     </head>
 
     <body>
-        <div style='text-align: center;'>
-            <h1 style="font-family:'Courier New', Courier, monospace; color:lightgray;">Free Fall</h1>
-           <p style="font-family:'Courier New', Courier, monospace; color:lightgray;"> 
-            A game by Mattias Willemsen, made for Ludum Dare 48
+        <div>
+            <h1>Free Fall</h1>
+           <p> 
+            A game by Mattias Willemsen, made for <a href="https://ldjam.com/">Ludum Dare</a> 48
             </p>
         </div>
 
-        <div id="game" style='margin:50px;display:flex;align-items:center;justify-content:center;'>
+        <div id="game">
           <iframe src='deeper/game.html' width='1000px', height='610px', style='border:none;'>
           </iframe>
         </div>
-        <div style='text-align: center;'>
-            <h2 style="font-family:'Courier New', Courier, monospace; color:lightgray;">&nbsp;Controls</h2>
-           <p style="font-family:'Courier New', Courier, monospace; color:lightgray;"> 
+        <div>
+            <h2>&nbsp;Controls</h2>
+           <p> 
             <b>&nbsp;&nbsp;&nbsp;LEFT:</b> Move left <br/> 
             <b>&nbsp;&nbsp;&nbsp;RIGHT:</b> Move right <br /> 
             <b>UP/SPACE:</b> Slow time&nbsp;<br /> 
